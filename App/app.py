@@ -1,12 +1,17 @@
 import json
 import mysql.connector
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 def connect():
     try:
         dataBase = mysql.connector.connect(
             host="localhost",
-            user="root",
-            password="<$-gyzSu9-$>",
+            user=os.getenv('DATABASEUSER'),
+            password=os.getenv('DATABASEPAS'),
             database="genshinfinder"
         )
         cursor = dataBase.cursor(dictionary=True)
@@ -113,5 +118,22 @@ def getAllLobbies():
         cursor.close()
         dataBase.close()
 
+def closeLobby(id):
+    dataBase, cursor = connect()
+    if not cursor:
+        print("Failed to connect to the database.")
+        return 
+    
+    try:              
+        cursor.execute("DELETE FROM lobbys WHERE id = %s", (id,))
+        dataBase.commit()
 
-print(getAllLobbies())
+    except mysql.connector.Error as err:
+        print(f"Error executing query: {err}")
+    finally:
+        cursor.close()
+        dataBase.close()
+
+
+
+print(os.getenv('DATABASEUSER'))
