@@ -3,137 +3,138 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 def connect():
     try:
-        dataBase = mysql.connector.connect(
+        database = mysql.connector.connect(
             host="localhost",
             user=os.getenv('DATABASEUSER'),
             password=os.getenv('DATABASEPAS'),
             database="genshinfinder"
         )
-        cursor = dataBase.cursor(dictionary=True)
-        return dataBase, cursor
+        cursor = database.cursor(dictionary=True)
+        return database, cursor
     except mysql.connector.Error as err:
         print(f"Error connecting to MySQL: {err}")
         return None, None
 
-def createLobby(title, playersMax, tags, uid, displayName):
-    dataBase, cursor = connect()
+def create_lobby(title, players_max, tags, uid, display_name):
+    database, cursor = connect()
     if not cursor:
-        print("Failed to connect to the database.")
-        return
-    
+        return "Failed to connect to the database."
+        
     try:
         json_tags = json.dumps(tags)
-        json_uids = json.dumps([{"uid": uid, "displayName": displayName}])
+        json_uids = json.dumps([{"uid": uid, "display_name": display_name}])
         cursor.execute(
-            "INSERT INTO lobbys (title, playersJoin, playersMax, tags, uid, playersInLobby, displayName) VALUES(%s, 1, %s, %s, %s,%s ,%s)",
-            (title, playersMax, json_tags, uid , json_uids, displayName)
+            "INSERT INTO lobbys (title, playersJoin, playersMax, tags, uid, playersInLobby, displayName) VALUES(%s, 1, %s, %s, %s, %s, %s)",
+            (title, players_max, json_tags, uid, json_uids, display_name)
         )
-        dataBase.commit()
+        database.commit()
 
         cursor.execute("SELECT * FROM lobbys WHERE uid = %s", (uid,))
-        lobbyDetails = cursor.fetchall()
-        return(lobbyDetails[0])
+        lobby_details = cursor.fetchall()
+        return lobby_details[0]
     except mysql.connector.Error as err:
-        print(f"Error executing query: {err}")
+        return f"Error executing query: {err}"
     finally:
         cursor.close()
-        dataBase.close()
+        database.close()
 
-
-def joinLobby(uid, id, displayName):
-    dataBase, cursor = connect()
+def join_lobby(lobby_id, uid, display_name):
+    database, cursor = connect()
     if not cursor:
-        print("Failed to connect to the database.")
-        return 
+        return "Failed to connect to the database." 
     
     try:
-        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (id,))
-        lobbyDetails = cursor.fetchone()
-        if lobbyDetails:
-            playerList = json.loads(lobbyDetails["playersInLobby"])
-            playerList.append({"uid": uid, "displayName": displayName})
-            json_uids = json.dumps(playerList)
+        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (lobby_id,))
+        lobby_details = cursor.fetchone()
+        if lobby_details:
+            player_list = json.loads(lobby_details["playersInLobby"])
+            player_list.append({"uid": uid, "display_name": display_name})
+            json_uids = json.dumps(player_list)
             cursor.execute(
                 "UPDATE lobbys SET playersInLobby = %s, playersJoin = playersJoin + 1 WHERE id = %s",
-                (json_uids, id)
+                (json_uids, lobby_id)
             )
-            dataBase.commit()
-            cursor.execute("SELECT * FROM lobbys WHERE id = %s", (id,))
-            lobbyDetails = cursor.fetchone()
-            return lobbyDetails
+            database.commit()
         else:
-            print("Lobby not found.")
-            return None
+            return "Lobby not found."
     except mysql.connector.Error as err:
-        print(f"Error executing query: {err}")
+        return f"Error executing query: {err}"
     finally:
         cursor.close()
-        dataBase.close()
+        database.close()
 
-def LeaveLobby(id, uid, displayName):
-    dataBase, cursor = connect()
+def leave_lobby(lobby_id, uid, display_name):
+    database, cursor = connect()
     if not cursor:
-        print("Failed to connect to the database.")
-        return 
+        return "Failed to connect to the database."
     
     try:
-        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (id,))
-        lobbyDetails = cursor.fetchone()
-        if(lobbyDetails):
-            playerList = json.loads(lobbyDetails["playersInLobby"])
-            playerList.remove({"uid": uid, "displayName": displayName})
-            json_uids = json.dumps(playerList)
+        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (lobby_id,))
+        lobby_details = cursor.fetchone()
+        if lobby_details:
+            player_list = json.loads(lobby_details["playersInLobby"])
+            player_list = [player for player in player_list if player["uid"] != uid or player["display_name"] != display_name]
+            json_uids = json.dumps(player_list)
             cursor.execute(
                 "UPDATE lobbys SET playersInLobby = %s, playersJoin = playersJoin - 1 WHERE id = %s",
-                (json_uids, id)
+                (json_uids, lobby_id)
             )
-            dataBase.commit()
+            database.commit()
         else:
-            print("Lobby not found.")
-            return None
+            return "Lobby not found."
     except mysql.connector.Error as err:
-        print(f"Error executing query: {err}")
+        return f"Error executing query: {err}"
     finally:
         cursor.close()
-        dataBase.close()
+        database.close()
 
-def getAllLobbies():
-    dataBase, cursor = connect()
+def get_all_lobbies():
+    database, cursor = connect()
     if not cursor:
-        print("Failed to connect to the database.")
-        return 
+        return "Failed to connect to the database."
     
     try:
         cursor.execute("SELECT * FROM lobbys")
-        lobbys = cursor.fetchall()
-        return lobbys
+        lobbies = cursor.fetchall()
+        return lobbies
     except mysql.connector.Error as err:
-        print(f"Error executing query: {err}")
+        return f"Error executing query: {err}"
     finally:
         cursor.close()
-        dataBase.close()
+        database.close()
 
-def closeLobby(id):
-    dataBase, cursor = connect()
+def close_lobby(lobby_id):
+    database, cursor = connect()
     if not cursor:
-        print("Failed to connect to the database.")
-        return 
+        return "Failed to connect to the database."
     
     try:              
-        cursor.execute("DELETE FROM lobbys WHERE id = %s", (id,))
-        dataBase.commit()
-
+        cursor.execute("DELETE FROM lobbys WHERE id = %s", (lobby_id,))
+        database.commit()
     except mysql.connector.Error as err:
-        print(f"Error executing query: {err}")
+        return f"Error executing query: {err}"
     finally:
         cursor.close()
-        dataBase.close()
+        database.close()
+
+def get_lobby_details(lobby_id):
+    database, cursor = connect()
+    if not cursor:
+        return "Failed to connect to the database."
+    
+    try:
+        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (lobby_id,))
+        lobby_details = cursor.fetchone()
+        return lobby_details
+    except mysql.connector.Error as err:
+        return f"Error executing query: {err}"
+    finally:
+        cursor.close()
+        database.close()
 
 
-
-print(os.getenv('DATABASEUSER'))
+print(os.getenv('DATABASEPAS'))
