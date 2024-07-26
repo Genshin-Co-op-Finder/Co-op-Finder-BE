@@ -60,7 +60,7 @@ class LobbyParticipation(Resource):
         lobby = get_lobby_details(lobby_id)
         if isinstance(lobby, str):
             return lobby, 400
-        if lobby['players_join'] == lobby['players_max']:
+        if lobby['playersJoin'] == lobby['playersMax']:
             return {'error': 'Lobby is full or unavailable'}, 400
         else:
             join_lobby(lobby_id, uid, display_name)

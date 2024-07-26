@@ -137,4 +137,3 @@ def get_lobby_details(lobby_id):
         database.close()
 
 
-print(os.getenv('DATABASEPAS'))
