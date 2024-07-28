@@ -5,7 +5,7 @@ from app import create_lobby, join_lobby, leave_lobby, get_all_lobbies, close_lo
 
 app = Flask("co-opFinder")
 api = Api(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='eventlet')
 
 class GetAvailableLobbies(Resource):
     def get(self):
