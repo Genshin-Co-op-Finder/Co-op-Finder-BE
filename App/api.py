@@ -28,7 +28,8 @@ class UpdateLobbies(Resource):
         missing_params = [param for param in required_params if not request.args.get(param)]
         if missing_params:
             return {'error': f'Missing required parameters: {", ".join(missing_params)}'}, 400
-        
+        if players_max > 4:
+            return {'error players Max cannot be greater then 4'}, 400
         title = request.args.get('title')
         players_max = request.args.get('playersMax')
         tags = request.args.get('tags')
