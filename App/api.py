@@ -75,7 +75,7 @@ class ManageLobbyPlayers(Resource):
         socketio.emit('updateCurrentLobby', lobby_details)
         return lobby_details
 
-api.add_resource(GetAvailableLobbies, '/get_available_lobbies')
+api.add_resource(GetAvailableLobbies, '/')
 api.add_resource(UpdateLobbies, '/update_lobbies')
 api.add_resource(ManageLobbyPlayers, '/manage_lobby_players')
 

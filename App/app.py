@@ -1,137 +1,124 @@
 import json
-import mysql.connector
-import os
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from bson import ObjectId
 from dotenv import load_dotenv
 
 load_dotenv()
+uri =f"mongodb+srv://eduvall9405:<{os.getenv('DATABASEPASS')}>@cluster0.ktfps.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 def connect():
+    client = MongoClient(uri, server_api=ServerApi('1'))
     try:
-        database = mysql.connector.connect(
-            host="localhost",
-            user=os.getenv('DATABASEUSER'),
-            password=os.getenv('DATABASEPAS'),
-            database="genshinfinder"
-        )
-        cursor = database.cursor(dictionary=True)
-        return database, cursor
-    except mysql.connector.Error as err:
-        print(f"Error connecting to MySQL: {err}")
-        return None, None
+        client.admin.command('ping')
+        print("Pinged your deployment. You successfully connected to MongoDB!")
+        return client['lobby_database']  # Access the specific database for lobbies
+    except Exception as e:
+        print(e)
+        return None
 
+# Create a new lobby
 def create_lobby(title, players_max, tags, uid, display_name):
-    database, cursor = connect()
-    if not cursor:
+    db = connect()
+    if not db:
         return "Failed to connect to the database."
-        
+    
     try:
-        json_tags = json.dumps(tags)
-        json_uids = json.dumps([{"uid": uid, "display_name": display_name}])
-        cursor.execute(
-            "INSERT INTO lobbys (title, playersJoin, playersMax, tags, uid, playersInLobby, displayName) VALUES(%s, 1, %s, %s, %s, %s, %s)",
-            (title, players_max, json_tags, uid, json_uids, display_name)
-        )
-        database.commit()
+        lobby_data = {
+            "title": title,
+            "playersJoin": 1,
+            "playersMax": players_max,
+            "tags": tags,
+            "uid": uid,
+            "playersInLobby": [{"uid": uid, "display_name": display_name}],
+            "displayName": display_name
+        }
+        result = db.lobbys.insert_one(lobby_data)
+        return db.lobbys.find_one({"_id": result.inserted_id})  # Return the newly created lobby details
+    except Exception as e:
+        return f"Error creating lobby: {e}"
 
-        cursor.execute("SELECT * FROM lobbys WHERE uid = %s", (uid,))
-        lobby_details = cursor.fetchall()
-        return lobby_details[0]
-    except mysql.connector.Error as err:
-        return f"Error executing query: {err}"
-    finally:
-        cursor.close()
-        database.close()
-
+# Join an existing lobby
 def join_lobby(lobby_id, uid, display_name):
-    database, cursor = connect()
-    if not cursor:
-        return "Failed to connect to the database." 
+    db = connect()
+    if not db:
+        return "Failed to connect to the database."
     
     try:
-        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (lobby_id,))
-        lobby_details = cursor.fetchone()
-        if lobby_details:
-            player_list = json.loads(lobby_details["playersInLobby"])
-            player_list.append({"uid": uid, "display_name": display_name})
-            json_uids = json.dumps(player_list)
-            cursor.execute(
-                "UPDATE lobbys SET playersInLobby = %s, playersJoin = playersJoin + 1 WHERE id = %s",
-                (json_uids, lobby_id)
+        lobby = db.lobbys.find_one({"_id": ObjectId(lobby_id)})
+        if lobby:
+            players_in_lobby = lobby["playersInLobby"]
+            players_in_lobby.append({"uid": uid, "display_name": display_name})
+            db.lobbys.update_one(
+                {"_id": ObjectId(lobby_id)},
+                {"$set": {"playersInLobby": players_in_lobby}, "$inc": {"playersJoin": 1}}
             )
-            database.commit()
+            return db.lobbys.find_one({"_id": ObjectId(lobby_id)})
         else:
             return "Lobby not found."
-    except mysql.connector.Error as err:
-        return f"Error executing query: {err}"
-    finally:
-        cursor.close()
-        database.close()
+    except Exception as e:
+        return f"Error joining lobby: {e}"
 
+# Leave an existing lobby
 def leave_lobby(lobby_id, uid, display_name):
-    database, cursor = connect()
-    if not cursor:
+    db = connect()
+    if not db:
         return "Failed to connect to the database."
     
     try:
-        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (lobby_id,))
-        lobby_details = cursor.fetchone()
-        if lobby_details:
-            player_list = json.loads(lobby_details["playersInLobby"])
-            player_list = [player for player in player_list if player["uid"] != uid or player["display_name"] != display_name]
-            json_uids = json.dumps(player_list)
-            cursor.execute(
-                "UPDATE lobbys SET playersInLobby = %s, playersJoin = playersJoin - 1 WHERE id = %s",
-                (json_uids, lobby_id)
+        lobby = db.lobbys.find_one({"_id": ObjectId(lobby_id)})
+        if lobby:
+            players_in_lobby = lobby["playersInLobby"]
+            players_in_lobby = [player for player in players_in_lobby if player["uid"] != uid or player["display_name"] != display_name]
+            db.lobbys.update_one(
+                {"_id": ObjectId(lobby_id)},
+                {"$set": {"playersInLobby": players_in_lobby}, "$inc": {"playersJoin": -1}}
             )
-            database.commit()
+            return db.lobbys.find_one({"_id": ObjectId(lobby_id)})
         else:
             return "Lobby not found."
-    except mysql.connector.Error as err:
-        return f"Error executing query: {err}"
-    finally:
-        cursor.close()
-        database.close()
+    except Exception as e:
+        return f"Error leaving lobby: {e}"
 
+# Retrieve all lobbies
 def get_all_lobbies():
-    database, cursor = connect()
-    if not cursor:
+    db = connect()
+    if not db:
         return "Failed to connect to the database."
     
     try:
-        cursor.execute("SELECT * FROM lobbys")
-        lobbies = cursor.fetchall()
+        lobbies = list(db.lobbys.find())
         return lobbies
-    except mysql.connector.Error as err:
-        return f"Error executing query: {err}"
-    finally:
-        cursor.close()
-        database.close()
+    except Exception as e:
+        return f"Error fetching lobbies: {e}"
 
+# Close (delete) a lobby
 def close_lobby(lobby_id):
-    database, cursor = connect()
-    if not cursor:
-        return "Failed to connect to the database."
-    
-    try:              
-        cursor.execute("DELETE FROM lobbys WHERE id = %s", (lobby_id,))
-        database.commit()
-    except mysql.connector.Error as err:
-        return f"Error executing query: {err}"
-    finally:
-        cursor.close()
-        database.close()
-
-def get_lobby_details(lobby_id):
-    database, cursor = connect()
-    if not cursor:
+    db = connect()
+    if not db:
         return "Failed to connect to the database."
     
     try:
-        cursor.execute("SELECT * FROM lobbys WHERE id = %s", (lobby_id,))
-        lobby_details = cursor.fetchone()
-        return lobby_details
-    except mysql.connector.Error as err:
-        return f"Error executing query: {err}"
-    finally:
-        cursor.close()
-        database.close()
+        result = db.lobbys.delete_one({"_id": ObjectId(lobby_id)})
+        if result.deleted_count == 1:
+            return "Lobby closed successfully."
+        else:
+            return "Lobby not found."
+    except Exception as e:
+        return f"Error closing lobby: {e}"
+
+# Get details of a specific lobby
+def get_lobby_details(lobby_id):
+    db = connect()
+    if not db:
+        return "Failed to connect to the database."
+    
+    try:
+        lobby = db.lobbys.find_one({"_id": ObjectId(lobby_id)})
+        if lobby:
+            return lobby
+        else:
+            return "Lobby not found."
+    except Exception as e:
+        return f"Error fetching lobby details: {e}"
+
