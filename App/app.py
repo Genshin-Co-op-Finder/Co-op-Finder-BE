@@ -24,7 +24,8 @@ def create_lobby(title, players_max, tags, uid, display_name):
         return "Failed to connect to the database."
     
     try:
-        lobby_data = {
+        if (db.lobbies.find_one({"_id": uid}) is None):
+            lobby_data = {
             "_id":uid,
             "title": title,
             "playersJoin": 1,
@@ -34,8 +35,10 @@ def create_lobby(title, players_max, tags, uid, display_name):
             "playersInLobby": [{"uid": uid, "display_name": display_name}],
             "displayName": display_name
         }
-        db.lobbies.insert_one(lobby_data)
-        return db.lobbies.find_one({"_id": uid})  
+            db.lobbies.insert_one(lobby_data)
+            return db.lobbies.find_one({"_id": uid})  
+        else:
+         return "Lobby already created using that UID"
    
     except Exception as e:
         return f"Error creating lobby: {e}"
