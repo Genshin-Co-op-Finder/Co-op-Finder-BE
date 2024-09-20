@@ -1,7 +1,7 @@
 from flask import Flask, request
 from flask_restful import Resource, Api
 from flask_socketio import SocketIO
-from app import create_lobby, join_lobby, leave_lobby, get_all_lobbies, close_lobby, get_lobby_details
+from App.app import create_lobby, join_lobby, leave_lobby, get_all_lobbies, close_lobby, get_lobby_details
 
 app = Flask("co-opFinder")
 api = Api(app)
