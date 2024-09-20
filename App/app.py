@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-uri =f"mongodb+srv://eduvall9405:{os.getenv('DATABASEPASS')}@cluster0.ktfps.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+uri = f"mongodb+srv://eduvall9405:{os.getenv('DATABASEPASS')}@cluster0.ktfps.mongodb.net/?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
 
 def connect():
     client = MongoClient(uri, server_api=ServerApi('1'))
