@@ -1,11 +1,36 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify, render_template_string
 from flask_restful import Resource, Api
 from flask_socketio import SocketIO
-from App.app import create_lobby, join_lobby, leave_lobby, get_all_lobbies, close_lobby, get_lobby_details
+from app import create_lobby, join_lobby, leave_lobby, get_all_lobbies, close_lobby, get_lobby_details
 
 app = Flask("co-opFinder")
 api = Api(app)
 socketio = SocketIO(app, async_mode='eventlet')
+
+# HTML template for displaying the API paths
+api_overview_template = """
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>API Overview</title>
+</head>
+<body>
+    <h1>API Endpoints</h1>
+    <ul>
+        <li><strong>GET /</strong> - Get all available lobbies.</li>
+        <li><strong>POST /update_lobbies</strong> - Create a new lobby (requires title, playersMax, tags, uid, displayName).</li>
+        <li><strong>DELETE /update_lobbies</strong> - Close a lobby by ID.</li>
+        <li><strong>PATCH /manage_lobby_players</strong> - Join a lobby (requires id, uid, displayName).</li>
+        <li><strong>GET /manage_lobby_players</strong> - Leave a lobby (requires id, uid, displayName).</li>
+    </ul>
+</body>
+</html>
+"""
+
+@app.route('/api_overview')
+def api_overview():
+    return render_template_string(api_overview_template)
 
 class GetAvailableLobbies(Resource):
     def get(self):
